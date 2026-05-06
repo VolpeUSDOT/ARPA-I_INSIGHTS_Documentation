@@ -26,7 +26,7 @@ s3://arpa-i-insights/
 │   │   └── FrontRange/
 │   └── stac/
 │       ├── index/items.parquet   # STAC GeoParquet index
-│       ├── items/               # STAC items (JSON per sortie)
+│       ├── items/               # STAC items (one folder per sortie, one JSON per tile)
 │       └── collection.json      # Full STAC collection
 ```
 
