@@ -100,8 +100,9 @@ product's class definitions before combining them.
 ### INSIGHTS-GIS-Surface-Labels
 
 Surface labels derived by fusing 2024 DRCOG planimetric polygons with the point cloud,
-available for the DRCOG and I25S2 sorties (37,495 tiles). Classes: `1` unclassified,
-`2` other ground, `11` road, `64` sidewalk, `65` driveway.
+available for the DRCOG and I25S2 sorties (37,495 tiles). Classes: `1` unclassified
+non-surface, `2` other ground, `11` road, `64` sidewalk, `65` driveway. Class `0` is not
+used — every point carries a class, so `1` is this product's background value.
 
 ### INSIGHTS-Manual-Semantic-Labels
 
