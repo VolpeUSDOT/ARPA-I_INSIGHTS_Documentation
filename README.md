@@ -1,6 +1,7 @@
 # ARPA-I INSIGHTS Dataset
 
 A large-scale, high-density (~85 pts/m²) geiger-mode aerial LiDAR dataset covering over 1,600 km² across the Salt Lake City, UT and Denver, CO metropolitan regions.
+![ARPA-I Teaser Image](examples/figures/INSIGHTS-Teaser-long.png)
 
 ## Overview
 
