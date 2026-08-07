@@ -275,3 +275,9 @@ ARPA-I INSIGHTS LiDAR Dataset (2026). MIT Lincoln Laboratory.
 U.S. Department of Transportation ARPA-I.
 Available at: https://registry.opendata.aws/arpa-i-insights/
 ```
+
+## Distribution Statement
+
+> DISTRIBUTION STATEMENT A. Approved for public release. Distribution is unlimited.
+
+> This material is based upon work supported by the Department of Transportation under Air Force Contract No. FA8702-15-D-0001 or FA8702-25-D-B002. Any opinions, findings, conclusions or recommendations expressed in this material are those of the author(s) and do not necessarily reflect the views of the Department of Transportation.
