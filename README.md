@@ -60,8 +60,16 @@ interpreting or combining label products.
 | Manual-Semantic-Labels class map | 6.1 KB | [`class-map.metadata.json`](https://arpa-i-insights.s3.us-west-2.amazonaws.com/labels/manual-semantic/v1/metadata/class-map.metadata.json) |
 | JSON Schema validating both (canonical) | 8.8 KB | [`class-map.schema.json`](https://arpa-i-insights.s3.us-west-2.amazonaws.com/labels/schemas/class-map.schema.json) |
 
-One schema covers both products. It lives at `labels/schemas/class-map.schema.json` — the
-`$id` the class maps declare — with identical mirrors beside each class map.
+One schema covers both products. `labels/schemas/class-map.schema.json` always serves the
+current format, with identical mirrors beside each class map.
+
+Class maps carry two version numbers. `schema_version` is the document format — whether your
+parser can read it. `content_version` is the taxonomy — whether the meaning of your labels
+changed. Only a MAJOR content change alters what a code means, and that forces a new data
+product version rather than an update in place. Every revision is archived immutably at
+`class-map/<content_version>/`, chained through `supersedes`, and described in a `CHANGELOG.md`
+beside each class map. Validate against the URL in the document's own `$schema` field, which is
+version-pinned, rather than the unversioned schema above.
 
 ### Manual-Semantic-Labels bulk download and QC
 
@@ -88,21 +96,26 @@ s3://arpa-i-insights/
 │       └── index/items.parquet              # STAC GeoParquet index
 ├── labels/
 │   ├── schemas/
-│   │   └── class-map.schema.json                      # canonical, validates both class maps
+│   │   ├── class-map.schema.json                      # current format, validates both class maps
+│   │   └── class-map/<schema_version>/...             # every format version, kept for old documents
 │   ├── gis-surface/v1/
 │   │   ├── index/gis-surface-labels-index.geoparquet
 │   │   ├── data/<sortie>/...                          # per-tile COPC LAZ
 │   │   └── metadata/
-│   │       ├── class-map.metadata.json                # authoritative class definitions
-│   │       └── class-map.schema.json                  # mirror of labels/schemas/
+│   │       ├── class-map.metadata.json                # current class definitions
+│   │       ├── class-map/<content_version>/...        # immutable copy of each revision
+│   │       ├── class-map.schema.json                  # mirror of labels/schemas/
+│   │       └── CHANGELOG.md                           # what changed at each revision
 │   └── manual-semantic/v1/
 │       ├── index/manual-semantic-labels-index.geoparquet   # per-tile index, QC + class counts
 │       ├── data/
 │       │   ├── qc-splits-final/tier_{0,1,2}/...            # per-tile COPC LAZ
 │       │   └── qc-splits-final.zip                         # same 63 tiles, bulk download
 │       └── metadata/
-│           ├── class-map.metadata.json                     # authoritative class definitions
+│           ├── class-map.metadata.json                     # current class definitions
+│           ├── class-map/<content_version>/...             # immutable copy of each revision
 │           ├── class-map.schema.json                       # mirror of labels/schemas/
+│           ├── CHANGELOG.md                                # what changed at each revision
 │           └── manual_semantic_labels_qc.jsonl             # QC record for all 106 reviewed tiles
 ```
 
@@ -194,6 +207,15 @@ available for the DRCOG and I25S2 sorties (37,495 tiles). Tiles are georeference
 Class `0` is not used — every point carries a class, so `1` is this product's background
 value. Authoritative definitions:
 [`class-map.metadata.json`](https://arpa-i-insights.s3.us-west-2.amazonaws.com/labels/gis-surface/v1/metadata/class-map.metadata.json).
+
+**Class semantics come from the source GIS layers, not from an annotation guideline**, so a
+class here can be scoped differently from the same-named class in Manual-Semantic-Labels.
+`Driveway` is the clearest case: DRCOG models driveways in a principally residential sense and
+does not represent commercial or structured-parking access, whereas the manual class (code
+`72`) covers access to buildings and parking areas generally. DRCOG driveway coverage is also
+per-municipality — member jurisdictions commissioned the layer individually — so an unlabeled
+ground point is not evidence that no driveway is there. Compare both class maps before
+combining the products.
 
 ### INSIGHTS-Manual-Semantic-Labels
 
