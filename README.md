@@ -282,6 +282,20 @@ fields. Those fields are **non-exhaustive**: a blank field means "not noted duri
 - **Spatial Data:** geopandas, pyarrow
 - **Cloud Access:** boto3
 
+## Research directions
+
+INSIGHTS was assembled to support transportation infrastructure research, and the directions below are the ones the release was designed around. They are intended as orientation for prospective users rather than as results — none of them are demonstrated here, and each would require processing beyond what is published.
+
+**Reference workflows for transportation digital twins.** The dataset pairs dense 3D geometry with a transportation-oriented semantic hierarchy, which suits work on converting point clouds into structured infrastructure information: extracting and validating roads, sidewalks, rail, bridges, guardrails, barriers, traffic signals, light poles, utility boxes, and related assets. Derived layers of that kind can then be compared or conflated with existing agency inventories, GIS records, OpenStreetMap features, inspection data, or maintenance databases. The gap this addresses is between point-cloud perception and operational digital-twin data products, where what is wanted is often not a pointwise label map but a maintained, queryable representation of assets with some account of uncertainty.
+
+**Multimodal integration.** The LiDAR provides a metrically accurate 3D representation that can be fused with satellite optical imagery, synthetic aperture radar, aerial and street-level imagery, map data, and agency records. These give different views of the same environment and can help resolve features that are ambiguous in airborne LiDAR alone — relevant to multimodal segmentation, open-vocabulary retrieval, map updating, and cross-modal representation learning.
+
+**Simulation-oriented derivatives.** LiDAR-derived geometry and semantic layers can be transformed into inputs for physical and operational simulation, including hydrologic analysis, line-of-sight analysis, traffic and clearance modeling, slope and debris-flow assessment, and post-event damage or accessibility analysis. These require substantial additional processing; the dataset provides a spatially detailed baseline to derive them from.
+
+**Annotation and quality-control tooling.** The manual annotations were produced through a structured workflow with expert review of a subset of tiles, and are released with per-tile QC tiers rather than as exhaustive ground truth. That makes the release usable as a testbed for annotation and auditing methods — model-assisted review, active learning, uncertainty estimation, and targeted relabeling of tiles or classes with high disagreement — and for tooling that keeps the accessibility of web-based workflows while improving geometric selection, dynamic visualization, and label-consistency assessment for 3D data.
+
+For the measured properties and limitations of the release, including what is *not* established, see the data descriptor.
+
 ## Sponsors & Maintainers
 
 - **Sponsor:** U.S. Department of Transportation ARPA-I
