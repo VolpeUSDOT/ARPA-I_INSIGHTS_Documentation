@@ -245,11 +245,29 @@ def network(per_combo):
             for k, (i, j, d, _) in enumerate(sub):
                 print(f"    {i:11s} - {j:11s}  observed {d:+7.3f}   "
                       f"fitted {b[idx[i]]-b[idx[j]]:+7.3f}   residual {resid[k]:+7.3f}")
-            print(f"  RMS residual: {np.sqrt(np.mean(resid**2)):.3f} m   "
-                  f"max |residual|: {np.max(np.abs(resid)):.3f} m")
-            print("  INTERPRETATION: residuals much smaller than the offsets means the "
-                  "offsets\n    are explained by one bias per sortie, and a per-sortie "
-                  "correction exists.")
+            rms = float(np.sqrt(np.mean(resid ** 2)))
+            mx = float(np.max(np.abs(resid)))
+            scale = float(np.median(np.abs([o[2] for o in sub])))
+            print(f"  RMS residual: {rms:.3f} m   max |residual|: {mx:.3f} m")
+            print(f"  median |observed offset|: {scale:.3f} m")
+            # Verdict must follow the numbers. Residuals are only evidence for a
+            # per-sortie bias if they are small compared with the offsets being
+            # explained; if they are comparable, the offsets are pair- or
+            # location-specific and no per-sortie correction exists.
+            ratio = rms / scale if scale > 0 else float("inf")
+            if ratio < 0.25:
+                print(f"  VERDICT: residuals are {ratio:.0%} of the typical offset. The "
+                      "offsets are\n    consistent with one bias per sortie, so a "
+                      "per-sortie vertical correction exists.")
+            elif ratio < 0.5:
+                print(f"  VERDICT: residuals are {ratio:.0%} of the typical offset. A "
+                      "per-sortie bias\n    explains part of the signal but leaves "
+                      "substantial pair-specific residual.")
+            else:
+                print(f"  VERDICT: residuals are {ratio:.0%} of the typical offset, i.e. "
+                      "comparable to\n    the offsets themselves. A single bias per sortie "
+                      "does NOT explain them, so\n    no per-sortie correction exists; the "
+                      "offset must be estimated locally.")
         else:
             print("  no redundancy (tree); offsets are reproduced exactly by construction "
                   "and\n    consistency cannot be tested within this component.")
@@ -298,6 +316,9 @@ def main():
     print("\n" + "=" * 78)
     print("PER-COMBINATION VERTICAL OFFSET")
     print("=" * 78)
+    print("dz_median is the offset; dz_spread is its range across the sampled pairs, so a")
+    print("large spread means the offset is not constant even within one sortie pair.")
+    print("shape_nmad is the scatter about the offset: agreement in surface shape.")
     agg = good.groupby("combo").agg(
         pairs=("dz_m", "size"),
         cells=("cells", "sum"),
