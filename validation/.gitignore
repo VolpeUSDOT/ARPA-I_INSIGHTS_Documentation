@@ -1,0 +1,13 @@
+# Internal working document, deliberately not published. It duplicates the method
+# already documented in each script's docstring and in the README's Traps section.
+METHOD_SPEC.md
+
+# Run artifacts: logs, per-tile measurement checkpoints, and derived tables.
+# Regenerate them by running the scripts; the reported figures live in the manuscript.
+out/
+*.csv
+*.jsonl
+*.log
+
+__pycache__/
+*.pyc
