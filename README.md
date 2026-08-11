@@ -78,9 +78,6 @@ version-pinned, rather than the unversioned schema above.
 | All 63 released tiles, single archive | 530 MB | [`qc-splits-final.zip`](https://arpa-i-insights.s3.us-west-2.amazonaws.com/labels/manual-semantic/v1/data/qc-splits-final.zip) |
 | QC record for all 106 reviewed tiles | 61 KB | [`manual_semantic_labels_qc.jsonl`](https://arpa-i-insights.s3.us-west-2.amazonaws.com/labels/manual-semantic/v1/metadata/manual_semantic_labels_qc.jsonl) |
 
-S3 serves HTTP range requests on the archive, so a single member can be extracted without
-downloading all 530 MB.
-
 ## Dataset Structure
 
 ```text
