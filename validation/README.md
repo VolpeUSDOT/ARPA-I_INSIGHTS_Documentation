@@ -58,6 +58,8 @@ accepts `--help`, and `--index` if your copy of `items.parquet` lives elsewhere.
 | `georegistration/characterize_offsets.py` | yes | vertical offsets between overlapping sorties |
 | `georegistration/test_relative_accuracy.py` | yes | relative versus absolute accuracy over co-observed ground |
 | `georegistration/verify_offset.py` | yes | whether an offset is a constant shift rather than a warp |
+| `georegistration/summarize_offsets.py` | no | aggregates measured offsets by sortie pair and by sortie |
+| `georegistration/inspection_pairs.py` | no | picks example tile pairs to inspect visually, with COPC links |
 
 Three need no downloads and finish in seconds, working entirely from the published
 GeoParquet index: `stage1_index_screen.py`, `area_recompute.py`, and
@@ -180,6 +182,21 @@ geometry. Between sorties, however, they are offset vertically by metre order.
 So if you mosaic sorties, difference them for change detection, or build an elevation
 model across a sortie boundary, estimate and remove a vertical offset first rather than
 merging the products as published.
+
+Two companions work from the measurement file that `characterize_offsets.py` writes, so they
+need no network access and are cheap to re-run. `summarize_offsets.py` aggregates the offsets
+by sortie pair and by sortie. `inspection_pairs.py` is a verification aid rather than an
+analysis: for each sortie pair it selects a typical and an extreme example tile pair and prints
+COPC links plus the overlap centroid, so the offsets can be confirmed by eye instead of taken
+on trust. Its selection rule is in the code — closest to the median, and largest deviation from
+it — so the choice of examples is auditable rather than hand-picked. Both default to
+`out/offsets.jsonl`, which is a run artifact and not tracked in git, so run
+`characterize_offsets.py` first or point `--pairs` at your own measurement file.
+
+What the measurements show, beyond the offsets themselves: fitting a plane to the difference
+surface returns a nonzero gradient in every pair, a median of 0.7 mm/m and up to 13 mm/m. The
+sorties are not merely offset in elevation but slightly askew, which is why an offset can vary
+by metres across one sortie pair and why no single per-sortie number describes the relationship.
 
 `characterize_offsets.py` measures every overlapping sortie pair, then asks whether the
 offsets are a property of each sortie rather than of each pair. Overlaps form a graph on
