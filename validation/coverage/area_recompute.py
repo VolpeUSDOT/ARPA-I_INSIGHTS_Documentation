@@ -28,7 +28,7 @@ import pyproj
 from shapely import wkb
 
 # US survey foot.  Both projected CRSs used by this release (EPSG:6430 Colorado
-# Central and EPSG:6626 Utah Central) are in US survey feet, NOT international
+# North and EPSG:6626 Utah North) are in US survey feet, NOT international
 # feet.  The two differ by 2 ppm, which is 3 km^2 over a 1.6 Mkm^2 release -- not
 # enough to matter here, but the wrong constant silently biases every length.
 M_PER_FTUS = 0.3048006096012192
