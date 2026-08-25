@@ -275,6 +275,7 @@ fields. Those fields are **non-exhaustive**: a blank field means "not noted duri
 - **Notebook:** See [`examples/get-to-know-ARPA-I-INSIGHTS.ipynb`](examples/get-to-know-ARPA-I-INSIGHTS.ipynb) for a guided tour of all three products
 - **Analysis Script:** See [`examples/scripts/analyze_las.py`](examples/scripts/analyze_las.py) for ground classification and DEM generation
 - **Georeferencing Script:** See [`examples/scripts/georeference_manual_labels.py`](examples/scripts/georeference_manual_labels.py) to restore projected coordinates to manual-semantic label tiles
+- **Quality-control analyses:** See [`validation/`](validation/) for runnable reference implementations of the quality-control measurements reported in the data descriptor — per-sortie noise rates, coverage gaps, footprint area and density, and inter-sortie vertical offsets. Start with [`validation/README.md`](validation/README.md), which also covers what to check before committing to a study area.
 
 ## Tools & Libraries
 
