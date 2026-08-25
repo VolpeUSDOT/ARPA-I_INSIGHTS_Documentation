@@ -20,6 +20,8 @@ how the published measurements were made.
 | compute area or point density correctly | `coverage/area_recompute.py`, and [Footprints, bounding boxes, and area](#footprints-bounding-boxes-and-area) |
 | find where data are missing rather than merely sparse | `coverage/stage3_drcog_void.py` |
 | combine or difference two sorties | `georegistration/characterize_offsets.py`, and [Combining sorties](#combining-sorties) |
+| check absolute elevation over your area of interest | `georegistration/compare_3dep.py`, and [Absolute elevation without the control survey](#absolute-elevation-without-the-control-survey) |
+| check horizontal registration | `georegistration/coregister_3dep.py`, and [Horizontal registration](#horizontal-registration) |
 | confirm a published number before relying on it | [Reproducing the published results](#reproducing-the-published-results) |
 
 ---
@@ -60,6 +62,10 @@ accepts `--help`, and `--index` if your copy of `items.parquet` lives elsewhere.
 | `georegistration/verify_offset.py` | yes | whether an offset is a constant shift rather than a warp |
 | `georegistration/summarize_offsets.py` | no | aggregates measured offsets by sortie pair and by sortie |
 | `georegistration/inspection_pairs.py` | no | picks example tile pairs to inspect visually, with COPC links |
+| `georegistration/compare_3dep.py` | yes | vertical difference against the USGS 3DEP 1 m DEM, per tile and per sortie |
+| `georegistration/ramp_fit.py` | no | whether a sortie's vertical bias is a constant, a ramp along the flight direction, or neither |
+| `georegistration/coregister_3dep.py` | yes | horizontal shift of each sortie against the 3DEP 1 m DEM |
+| `georegistration/coregister_pairs.py` | yes | horizontal disagreement between overlapping sorties |
 
 Three need no downloads and finish in seconds, working entirely from the published
 GeoParquet index: `stage1_index_screen.py`, `area_recompute.py`, and
@@ -197,6 +203,140 @@ What the measurements show, beyond the offsets themselves: fitting a plane to th
 surface returns a nonzero gradient in every pair, a median of 0.7 mm/m and up to 13 mm/m. The
 sorties are not merely offset in elevation but slightly askew, which is why an offset can vary
 by metres across one sortie pair and why no single per-sortie number describes the relationship.
+
+### Horizontal registration
+
+Everything else in this directory is blind to horizontal error, and deliberately so: the
+inter-sortie and 3DEP comparisons both restrict themselves to flat ground, because that is
+what isolates the vertical component, and on flat ground a horizontal misregistration
+produces almost no vertical difference. Two scripts measure what those cannot see, and they
+work by inverting the restriction: they need *slope*.
+
+The relation both use is that a horizontal displacement shows up in elevation in proportion
+to the terrain gradient, so regressing the elevation difference on the two components of the
+gradient returns the displacement as the coefficients:
+
+```
+dh = dz + dx * dH/dx + dy * dH/dy + beta * |grad H|
+```
+
+This is the derivative form of Nuth and Kääb (2011) co-registration. `coregister_3dep.py`
+applies it against the 3DEP 1 m DEM, giving an absolute shift per sortie;
+`coregister_pairs.py` applies it between overlapping sorties, giving their disagreement with
+each other, which no external product can contaminate and no epoch gap affects.
+
+Four things about the implementation are worth knowing before trusting a number from either:
+
+* **That fourth term is not decoration.** The ground proxy used throughout this directory is
+  a low percentile of elevation within a cell, which on a slope sits toward the cell's
+  downhill edge — low by roughly `0.4 * |grad H| * cell`, growing with slope and pointing
+  downhill. That is the same shape as the signal, and on a 50% slope it is as large as the
+  elevation difference a 1 m shift would produce. Slope magnitude therefore enters as its own
+  regressor to absorb it. The fitted coefficient comes out near the predicted value, which is
+  how the mechanism is confirmed rather than assumed. It should and does fall to near zero in
+  `coregister_pairs.py`, where both surfaces share the estimator and the bias cancels.
+* **Slope is not the same as conditioning.** On a *uniform* slope the gradient components are
+  constant across the tile, hence collinear with the intercept, and the vertical offset cannot
+  be separated from the horizontal shift at all. What identifies a shift is *variation* in
+  slope and aspect. Both scripts therefore pool all of a sortie's tiles into one fit while
+  carrying a separate vertical offset per tile — necessary, not tidy, because the vertical
+  bias varies along these sorties by metres — and report a conditioning diagnostic.
+* **Ignore the fit's own standard error.** It treats each 2 m cell as independent when the
+  residuals are correlated over tens of metres, and it will happily report a 1.3 m shift as
+  "±0.01 m". The reported error is that one inflated by the scatter of the per-tile estimates,
+  and the inflation factor is printed so you can see how far off the naive figure is.
+* **The estimator was validated, not assumed.** `--synthetic-shift DX,DY` translates the point
+  clouds by a known amount before fitting, so recovery can be checked against truth on real
+  data. Recovery is close to unbiased at metre scale, and the error does not shrink
+  proportionally for smaller shifts — it is an accuracy floor, not an attenuation — but the
+  floor falls with sample size: roughly 0.25 m median at 15 tiles per sortie, 0.03 m median
+  and 0.07 m worst case at 40. The binding limits are the reference's own horizontal
+  accuracy and the between-tile scatter, which the reported standard errors carry.
+* **The zero point was tested separately.** `--null-test` substitutes the reference surface
+  for the point elevations, keeping the real point geometry, so the true shift is zero by
+  construction and anything recovered is estimator bias. This is the only check that can
+  see a constant offset: `--synthetic-shift` measures the *change* in the answer under a
+  known translation, so a fixed bias cancels out of it. Across 17 sorties and 680 tiles the
+  bias is at most 0.057 m, two orders of magnitude below the measured shifts.
+
+```sh
+# absolute, against 3DEP; --cache-dir makes the validation below free
+$PY validation/georegistration/coregister_3dep.py --n 40 --workers 14 --cache-dir /tmp/tiles
+# validate: translate by a known amount and check recovery against the baseline
+$PY validation/georegistration/coregister_3dep.py --n 40 --cache-dir /tmp/tiles \
+    --synthetic-shift=1.5,-0.75 --baseline out/coregister_3dep_by_sortie.csv \
+    --out out/coregister_syn.jsonl
+# between overlapping sorties
+$PY validation/georegistration/coregister_pairs.py --per-combo 8 --workers 10
+```
+
+Note the `--synthetic-shift=` form with an equals sign: a value beginning with a minus sign
+is otherwise read as an option. `--n` selects a prefix of one fixed permutation, so raising
+it extends the sample rather than redrawing it and every tile already measured is reused. Recovery is measured against a baseline run rather than
+against zero, because the tiles carry a real shift already.
+
+---
+
+### Absolute elevation without the control survey
+
+The ground control survey behind the georegistration residuals in the paper is not part of
+the release, so those residuals cannot be re-derived from the published data or attributed
+to a particular sortie. `compare_3dep.py` measures absolute elevation a different way, which
+needs nothing but the release and public data: it differences INSIGHTS against the **USGS
+3DEP 1 m bare-earth DEM**, which is referenced to the same vertical datum (NAVD88), over a
+seeded sample of interior tiles in every sortie.
+
+Two things make the comparison trustworthy, and both were mistakes first:
+
+* **Buildings must be excluded, and a flatness test does not exclude them,** because a flat
+  roof is flat. Cells are restricted to bare earth by a morphological opening of the
+  per-cell ground proxy — erode then dilate with a window wider than a building — which
+  removes objects standing above their surroundings while preserving terrain, including
+  sloped terrain. It uses no information from the DEM, so it cannot bias the result toward
+  agreement.
+* **The reference raster must be identified by what it declares, not by its name.** 3DEP
+  file names encode position in units of 10 km in the projected CRS of their project, and
+  the older `USGS_one_meter_*` generation does not name the zone at all. Worse, 18 of the 61
+  1 m projects over Colorado and Utah hold rasters in more than one UTM zone, so there is no
+  such thing as a project-wide CRS. An index built from file names is fine for *finding*
+  candidates and unsafe for *using* them, so the CRS is read from each open raster and every
+  query point is checked against that raster's own bounds. Skipping this produced silent
+  nonsense rather than errors: Colorado tiles compared against Utah rasters, and five Utah
+  tiles compared against northwest Colorado at differences near −2000 m.
+
+`ramp_fit.py` then reads the per-tile results and asks what the variation *within* a sortie
+is made of. A constant bias, a smooth ramp along the collection, and unstructured scatter
+are different defects with different consequences, and the tile-to-tile spread alone cannot
+tell them apart. It fits one-dimensionally along the principal axis of the sampled tile
+positions, because most of these sorties are highway corridors whose tiles are nearly
+collinear — up to 78:1 — which makes a two-dimensional plane fit unidentifiable across the
+corridor while still reporting a confident gradient direction. **The across-corridor
+component is therefore not measured.** Significance comes from a permutation test and from
+leave-one-out prediction error against a constant-only model, not from R², which is inflated
+by construction at these sample sizes. Two confounds are checked rather than assumed away: a
+step between reference epochs at one end of a corridor mimics a ramp, so where a sortie draws
+on more than one 3DEP project the ramp is refitted inside the single project contributing the
+most tiles; and a tile whose own within-tile scatter is metre-scale never produced a usable
+bias, so `--max-nmad` drops those and reports which.
+
+```sh
+$PY validation/georegistration/compare_3dep.py --n 30 --workers 12
+$PY validation/georegistration/ramp_fit.py
+```
+
+The first is the expensive one: it downloads one tile per comparison and reads a window from
+a remote COG for each, and it caches its 3DEP index in `out/dem_index.json`. Both accept
+`--sortie` to restrict the work. Interpreting the output: `dz_median` is the vertical bias
+against the reference, `within_tile_nmad` is the precision of that measurement, and `gap_yr`
+is the number of years between the reference epoch and the June 2025 collection — a large gap
+means real change on the ground contributes to the difference, so a sortie compared against a
+2016 reference is weaker evidence than one compared against 2023.
+
+This measures the vertical only. On flat ground a horizontal misregistration produces almost
+no vertical difference, which is exactly why the flatness restriction isolates the vertical —
+and exactly why neither script says anything about horizontal accuracy.
+
+---
 
 `characterize_offsets.py` measures every overlapping sortie pair, then asks whether the
 offsets are a property of each sortie rather than of each pair. Overlaps form a graph on
@@ -360,9 +500,17 @@ validation/out/
   stage2_tiles.jsonl        per-tile noise metrics
   checks_*.jsonl            per-tile metrics from the validation checks
   offsets.jsonl             per-pair inter-sortie vertical offsets
+  compare_3dep.jsonl        per-tile vertical difference against the 3DEP 1 m DEM
+  dem_index.json            cached 3DEP tile index, keyed by (project, CRS)
+  ramp_fit.csv              per-sortie constant-versus-ramp test
+  coregister_3dep.jsonl     per-tile horizontal shift against the 3DEP 1 m DEM
+  coregister_pairs.jsonl    per-pair horizontal shift between overlapping sorties
   void_bbox.json            coverage-gap geometry
   void_headers.json         LAS header cross-check summary
 ```
+
+`dem_index.json` is a cache, not a result: delete it or pass `--refresh-dem-index` to
+rebuild it when USGS publishes new 1 m coverage.
 
 Run artifacts are not tracked in git; regenerate them with the commands above. The figures
 as published appear in the data descriptor.
