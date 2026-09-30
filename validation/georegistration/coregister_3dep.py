@@ -185,7 +185,7 @@ def sample_dem_bilinear(demkey, src, ux_fn):
         try:
             with rasterio.open(url) as ds:
                 epsg = ds.crs.to_epsg()
-                ux, uy = ux_fn(ds.crs.to_wkt())
+                ux, uy = ux_fn(C3.dem_transform_crs(ds.crs))
                 b = ds.bounds
                 inb = (np.isfinite(ux) & np.isfinite(uy) &
                        (ux >= b.left + 2) & (ux <= b.right - 2) &

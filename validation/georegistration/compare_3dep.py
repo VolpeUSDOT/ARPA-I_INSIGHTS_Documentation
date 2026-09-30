@@ -299,6 +299,33 @@ class Reference:
         return out
 
 
+# 3DEP rasters declare NAD83 / UTM (EPSG:269xx), but the products are realized in
+# NAD83(2011). Asked to go from NAD83(2011) to plain NAD83, PROJ looks for the NADCON5
+# grids and, if they are installed, applies a datum shift of decimetres to metres that does
+# not belong here. With the grids absent it falls back to a ballpark no-op, which is the
+# right answer but an accidental one: the measurement would change if someone installed
+# them. So the UTM zone is taken from the raster and the transform is made explicitly to
+# the NAD83(2011) CRS of that zone, which performs no datum shift and does not depend on
+# the local PROJ grid state.
+# zone -> EPSG code for NAD83(2011) / UTM zone NN N. Verified by transforming a point
+# between EPSG:269NN and each of these and confirming a zero shift; the codes do not
+# follow the 269NN offset pattern, so they are listed rather than computed.
+NAD83_2011_UTM = {10: 6339, 11: 6340, 12: 6341, 13: 6342, 14: 6343, 15: 6344}
+
+
+def dem_transform_crs(crs):
+    """The CRS to transform into when sampling a 3DEP raster, as an EPSG string or WKT."""
+    try:
+        e = crs.to_epsg()
+    except Exception:
+        e = None
+    if e is not None and 26900 < e < 26925:
+        z = e - 26900
+        if z in NAD83_2011_UTM:
+            return f"EPSG:{NAD83_2011_UTM[z]}"
+    return crs.to_wkt()
+
+
 def read_reference(demkey, src, px, py):
     """Sample one 3DEP raster at the query points, in the CRS the raster itself declares.
 
@@ -315,7 +342,7 @@ def read_reference(demkey, src, px, py):
         try:
             with rasterio.open(url) as ds:
                 epsg = ds.crs.to_epsg()
-                tr = Transformer.from_crs(src, ds.crs.to_wkt(), always_xy=True)
+                tr = Transformer.from_crs(src, dem_transform_crs(ds.crs), always_xy=True)
                 ux, uy = tr.transform(px, py)
                 b = ds.bounds
                 inb = (np.isfinite(ux) & np.isfinite(uy) &
