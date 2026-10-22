@@ -17,7 +17,7 @@ dependencies = [
     "matplotlib>=3.10.9",
     "numpy>=2.2.6",
     "pandas>=2.3.3",
-    "pdal>=3.5.4",
+    "pdal>=3.5.4", # Comment out to avoid build errors from not being able to compile from source, for demo purposes
     "pyarrow>=24.0.0",
     # Imported directly by the notebook and examples/scripts (and required by
     # laspy's CRS handling), so declared rather than relied on transitively.

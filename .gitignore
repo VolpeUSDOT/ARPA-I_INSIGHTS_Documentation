@@ -13,3 +13,4 @@ examples/map.html
 
 # Deposit description for the Zenodo record; staged locally, not published here.
 ZENODO.md
+/examples/figures/*
